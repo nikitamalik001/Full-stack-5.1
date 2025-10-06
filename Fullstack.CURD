@@ -1,0 +1,78 @@
+const express = require('express')
+const mongoose = require('mongoose')
+const bodyParser = require('body-parser')
+
+const app = express()
+app.use(bodyParser.json())
+
+mongoose.connect('mongodb://127.0.0.1:27017/productsdb', {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+}).then(() => console.log('MongoDB Connected'))
+  .catch(err => console.error(err))
+
+const productSchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    price: { type: Number, required: true },
+    category: { type: String, required: true },
+    inStock: { type: Boolean, default: true }
+})
+
+const Product = mongoose.model('Product', productSchema)
+
+// CREATE - Add new product
+app.post('/products', async (req, res) => {
+    try {
+        const product = new Product(req.body)
+        const saved = await product.save()
+        res.status(201).json(saved)
+    } catch (error) {
+        res.status(400).json({ message: error.message })
+    }
+})
+
+// READ - Get all products
+app.get('/products', async (req, res) => {
+    try {
+        const products = await Product.find()
+        res.json(products)
+    } catch (error) {
+        res.status(500).json({ message: error.message })
+    }
+})
+
+// READ - Get single product by ID
+app.get('/products/:id', async (req, res) => {
+    try {
+        const product = await Product.findById(req.params.id)
+        if (!product) return res.status(404).json({ message: 'Product not found' })
+        res.json(product)
+    } catch (error) {
+        res.status(500).json({ message: error.message })
+    }
+})
+
+// UPDATE - Update product by ID
+app.put('/products/:id', async (req, res) => {
+    try {
+        const updated = await Product.findByIdAndUpdate(req.params.id, req.body, { new: true })
+        if (!updated) return res.status(404).json({ message: 'Product not found' })
+        res.json(updated)
+    } catch (error) {
+        res.status(400).json({ message: error.message })
+    }
+})
+
+// DELETE - Remove product by ID
+app.delete('/products/:id', async (req, res) => {
+    try {
+        const deleted = await Product.findByIdAndDelete(req.params.id)
+        if (!deleted) return res.status(404).json({ message: 'Product not found' })
+        res.json({ message: 'Product deleted successfully' })
+    } catch (error) {
+        res.status(500).json({ message: error.message })
+    }
+})
+
+const PORT = 3000
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
